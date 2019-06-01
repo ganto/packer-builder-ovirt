@@ -6,25 +6,18 @@ import (
 	"log"
 	"net/url"
 	"os"
-	//	"time"
 
 	"github.com/hashicorp/packer/common"
-	"github.com/hashicorp/packer/common/bootcommand"
 	"github.com/hashicorp/packer/common/uuid"
 	"github.com/hashicorp/packer/helper/communicator"
 	"github.com/hashicorp/packer/helper/config"
 	"github.com/hashicorp/packer/packer"
 	"github.com/hashicorp/packer/template/interpolate"
-	//"github.com/mitchellh/mapstructure"
 )
 
 type Config struct {
-	common.PackerConfig    `mapstructure:",squash"`
-	common.HTTPConfig      `mapstructure:",squash"`
-	bootcommand.BootConfig `mapstructure:",squash"`
-	//	RawBootKeyInterval     string              `mapstructure:"boot_key_interval"`
-	//	BootKeyInterval        time.Duration       ``
-	Comm communicator.Config `mapstructure:",squash"`
+	common.PackerConfig `mapstructure:",squash"`
+	Comm                communicator.Config `mapstructure:",squash"`
 
 	OvirtURLRaw        string `mapstructure:"ovirt_url"`
 	OvirtURL           *url.URL
@@ -46,8 +39,6 @@ type Config struct {
 	OS          string       `mapstructure:"os"`
 	NICs        []nicConfig  `mapstructure:"network_adapters"`
 	Disks       []diskConfig `mapstructure:"disks"`
-	//	ISOFile string       `mapstructure:"iso_file"`
-	//	Agent   bool         `mapstructure:"qemu_agent"`
 
 	TemplateName        string `mapstructure:"template_name"`
 	TemplateDescription string `mapstructure:"template_description"`
@@ -71,19 +62,11 @@ type diskConfig struct {
 func NewConfig(raws ...interface{}) (*Config, []string, error) {
 	c := new(Config)
 
-	//	var md mapstructure.Metadata
 	err := config.Decode(c, &config.DecodeOpts{
-		//		Metadata:           &md,
 		Interpolate:        true,
 		InterpolateContext: &c.ctx,
-		//		InterpolateFilter: &interpolate.RenderFilter{
-		//			Exclude: []string{
-		//				"boot_command",
-		//			},
-		//		},
 	}, raws...)
 	if err != nil {
-		//        return nil, fmt.Errorf("Failed to mapstructure Config: %+v", err), err
 		return nil, nil, err
 	}
 
@@ -150,8 +133,6 @@ func NewConfig(raws ...interface{}) (*Config, []string, error) {
 	}
 
 	errs = packer.MultiErrorAppend(errs, c.Comm.Prepare(&c.ctx)...)
-	errs = packer.MultiErrorAppend(errs, c.BootConfig.Prepare(&c.ctx)...)
-	errs = packer.MultiErrorAppend(errs, c.HTTPConfig.Prepare(&c.ctx)...)
 
 	// Required configurations that will display errors if not set
 	if c.Username == "" {

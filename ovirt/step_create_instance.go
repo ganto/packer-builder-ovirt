@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
+	//	"math"
 
 	"github.com/hashicorp/packer/helper/multistep"
 	"github.com/hashicorp/packer/packer"
@@ -24,7 +24,37 @@ func (s *stepCreateInstance) Run(ctx context.Context, state multistep.StateBag) 
 	ui := state.Get("ui").(packer.Ui)
 	conn := state.Get("conn").(*ovirtsdk4.Connection)
 
-	ui.Say("Creating instance...")
+	ui.Say("Creating virtual machine...")
+
+	clustersService := conn.SystemService().ClustersService()
+	log.Printf("Query oVirt clusters...")
+
+	// Use the "list" method of the "clusters" service to list all the clusters of the system
+	clustersResponse, err := clustersService.List().Send()
+	if err != nil {
+		ui.Error(fmt.Sprintf("oVirt: Error getting cluster list\n%v", err))
+		return multistep.ActionHalt
+	}
+
+	var clusterID string
+	if clusters, ok := clustersResponse.Clusters(); ok {
+		for _, cluster := range clusters.Slice() {
+			if clusterName, ok := cluster.Name(); ok {
+				log.Printf("Found cluster name: %v\n", clusterName)
+				if clusterName == c.Cluster {
+					clusterID = cluster.MustId()
+					log.Printf("Using cluster: %s", clusterID)
+					break
+				}
+			}
+		}
+	}
+	if clusterID == "" {
+		err = fmt.Errorf("Could not find cluster '%s'", c.Cluster)
+		ui.Error(err.Error())
+		state.Put("error", err)
+		return multistep.ActionHalt
+	}
 
 	// Get the reference to the service that manages the storage domains
 	sdsService := conn.SystemService().StorageDomainsService()
@@ -62,7 +92,9 @@ func (s *stepCreateInstance) Run(ctx context.Context, state multistep.StateBag) 
 		}
 	}
 	if templateID == "" {
-		ui.Error(fmt.Sprintf("Could not find template '%s' with version '%d'", c.SourceTemplate, c.SourceTemplateVersion))
+		err = fmt.Errorf("Could not find template '%s' with version '%d'", c.SourceTemplate, c.SourceTemplateVersion)
+		ui.Error(err.Error())
+		state.Put("error", err)
 		return multistep.ActionHalt
 	}
 	log.Printf("Using template: %s", templateID)
@@ -81,12 +113,10 @@ func (s *stepCreateInstance) Run(ctx context.Context, state multistep.StateBag) 
 	// disk := disks.Slice()[0].MustDisk()
 
 	vmBuilder := ovirtsdk4.NewVmBuilder().
-		Name(c.VMName).
-		// Memory is specified in MB
-		Memory(int64(c.Memory) * int64(math.Pow(2, 20)))
+		Name(c.VMName)
 
 	cluster, err := ovirtsdk4.NewClusterBuilder().
-		Id(state.Get("cluster_id").(string)).
+		Id(clusterID).
 		Build()
 	if err != nil {
 		ui.Error(fmt.Sprintf("ovirtsdk4: Error creating cluster reference\n%v", err))
@@ -153,7 +183,9 @@ func (s *stepCreateInstance) Run(ctx context.Context, state multistep.StateBag) 
 		Vm(vm).
 		Send()
 	if err != nil {
-		ui.Error(fmt.Sprintf("ovirtsdk4: Error creating VM\n%v", err))
+		err := fmt.Errorf("Error creating VM: %s", err)
+		state.Put("error", err)
+		ui.Error(err.Error())
 		return multistep.ActionHalt
 	}
 
@@ -163,14 +195,56 @@ func (s *stepCreateInstance) Run(ctx context.Context, state multistep.StateBag) 
 		return multistep.ActionHalt
 	}
 
-	state.Put("vm_id", newVM.MustId())
+	vmID := newVM.MustId()
+	ui.Message(fmt.Sprintf("Virtual machine '%s' has been defined", vmID))
+	log.Printf("virtual machine id: %s", vmID)
 
-	ui.Message(fmt.Sprintf("Instance '%s' has been defined. Waiting for status ready...", state.Get("vm_id")))
+	ui.Message(fmt.Sprintf("Waiting for VM to become ready (status down) ..."))
+	stateChange := StateChangeConf{
+		Pending:   []string{"image_locked"},
+		Target:    []string{string(ovirtsdk4.VMSTATUS_DOWN)},
+		Refresh:   VMStateRefreshFunc(conn, vmID),
+		StepState: state,
+	}
+	latestVM, err := WaitForState(&stateChange)
+	if err != nil {
+		err := fmt.Errorf("Failed waiting for VM (%s) to become down: %s", vmID, err)
+		state.Put("error", err)
+		ui.Error(err.Error())
+		return multistep.ActionHalt
+	}
+
+	state.Put("vm_id", latestVM.(*ovirtsdk4.Vm).MustId())
 
 	return multistep.ActionContinue
 }
 
 // Cleanup any resources that may have been created during the Run phase.
 func (s *stepCreateInstance) Cleanup(state multistep.StateBag) {
-	// Nothing to cleanup for this step.
+	if _, ok := state.GetOk("vm_id"); !ok {
+		return
+	}
+
+	ui := state.Get("ui").(packer.Ui)
+	conn := state.Get("conn").(*ovirtsdk4.Connection)
+	vmID := state.Get("vm_id").(string)
+
+	ui.Say(fmt.Sprintf("Removing VM: %s", vmID))
+	_, err := conn.SystemService().
+		VmsService().
+		VmService(vmID).
+		Remove().
+		Send()
+	if err != nil {
+		ui.Error(fmt.Sprintf("Error removing VM, may still be around: %s", err))
+		return
+	}
+
+	stateChange := StateChangeConf{
+		Pending:   []string{string(ovirtsdk4.VMSTATUS_UP), string(ovirtsdk4.VMSTATUS_DOWN)},
+		Target:    []string{string(ovirtsdk4.VMSTATUS_DOWN)},
+		Refresh:   VMStateRefreshFunc(conn, vmID),
+		StepState: state,
+	}
+	WaitForState(&stateChange)
 }

@@ -7,10 +7,9 @@ import (
 	"time"
 
 	"github.com/hashicorp/packer/common"
-	ovirtsdk4 "github.com/ovirt/go-ovirt"
-	//    "github.com/hashicorp/packer/helper/communicator"
 	"github.com/hashicorp/packer/helper/multistep"
 	"github.com/hashicorp/packer/packer"
+	ovirtsdk4 "github.com/ovirt/go-ovirt"
 )
 
 // The unique id for the builder
@@ -19,8 +18,6 @@ const BuilderId = "ganto.ovirt"
 type Builder struct {
 	config Config
 	runner multistep.Runner
-	//	proxmoxClient *proxmox.Client
-	//	ovirtConn     *ovirtsdk4.Connection
 }
 
 var pluginVersion = "0.0.1"
@@ -63,15 +60,18 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 
 	// Build the steps
 	steps := []multistep.Step{
-		&stepValidateConfig{},
-		&common.StepHTTPServer{
-			HTTPDir:     b.config.HTTPDir,
-			HTTPPortMin: b.config.HTTPPortMin,
-			HTTPPortMax: b.config.HTTPPortMax,
+		&stepKeyPair{
+			Debug:        b.config.PackerDebug,
+			Comm:         &b.config.Comm,
+			DebugKeyPath: fmt.Sprintf("ovirt_%s.pem", b.config.PackerBuildName),
 		},
 		&stepCreateInstance{
 			Ctx:   b.config.ctx,
 			Debug: b.config.PackerDebug,
+		},
+		&stepSetupInitialRun{
+			Debug: b.config.PackerDebug,
+			Comm:  &b.config.Comm,
 		},
 		&stepShutdownInstance{},
 	}
@@ -89,10 +89,15 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 
 	// If there was an error, return that
 	if rawErr, ok := state.GetOk("error"); ok {
-		ui.Error(rawErr.(error).Error())
 		return nil, rawErr.(error)
 	}
 
+	// If there are no images, then just return
+	if _, ok := state.GetOk("image"); !ok {
+		return nil, nil
+	}
+
+	// Build the artifact and return it
 	artifact := &Artifact{
 		templateID: 42,
 	}
