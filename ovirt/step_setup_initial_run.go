@@ -18,6 +18,7 @@ type stepSetupInitialRun struct {
 
 // Run executes the Packer build step that configures the initial run setup
 func (s *stepSetupInitialRun) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
+	c := state.Get("config").(*Config)
 	ui := state.Get("ui").(packer.Ui)
 	conn := state.Get("conn").(*ovirtsdk4.Connection)
 
@@ -35,11 +36,29 @@ func (s *stepSetupInitialRun) Run(ctx context.Context, state multistep.StateBag)
 	}
 	if string(s.Comm.SSHPublicKey) != "" {
 		publicKey := s.Comm.SSHPublicKey
-		//		publicKeyDer := x509.MarshalPKIXPublicKey(&publicKey)
-		//		publicKeyBlk := pem.Block{Type: "PUBLIC KEY", Headers: nil, Bytes: privDer}
 		log.Printf("Set authorized SSH key: %s", string(publicKey))
 		initializationBuilder.AuthorizedSshKeys(string(publicKey))
 	}
+	if c.IPAddress != "" {
+		ncBuilder := ovirtsdk4.NewNicConfigurationBuilder().
+			BootProtocol(ovirtsdk4.BootProtocol("static")).
+			OnBoot(true)
+		log.Printf("Set static IP address: %s/%s", c.IPAddress, c.Netmask)
+		log.Printf("Set gateway: %s", c.Gateway)
+		ipBuilder := ovirtsdk4.NewIpBuilder().
+			Address(c.IPAddress).
+			Netmask(c.Netmask).
+			Gateway(c.Gateway)
+		nc, err := ncBuilder.IpBuilder(ipBuilder).Build()
+		if err != nil {
+			err = fmt.Errorf("Error setting NIC configuration: %s", err)
+			ui.Error(err.Error())
+			state.Put("error", err)
+			return multistep.ActionHalt
+		}
+		initializationBuilder.NicConfigurationsOfAny(nc)
+	}
+
 	initialization, err := initializationBuilder.Build()
 	if err != nil {
 		err = fmt.Errorf("Error setting up initial run: %s", err)

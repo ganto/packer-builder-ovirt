@@ -39,6 +39,9 @@ type Config struct {
 	OS          string       `mapstructure:"os"`
 	NICs        []nicConfig  `mapstructure:"network_adapters"`
 	Disks       []diskConfig `mapstructure:"disks"`
+	IPAddress   string       `mapstructure:"address"`
+	Netmask     string       `mapstructure:"netmask"`
+	Gateway     string       `mapstructure:"gateway"`
 
 	TemplateName        string `mapstructure:"template_name"`
 	TemplateDescription string `mapstructure:"template_description"`
@@ -130,6 +133,10 @@ func NewConfig(raws ...interface{}) (*Config, []string, error) {
 			log.Printf("Disk %d cache mode not set, using default 'none'", idx)
 			c.Disks[idx].CacheMode = "none"
 		}
+	}
+	if c.Netmask == "" {
+		c.Netmask = "255.255.255.0"
+		log.Printf("Set default netmask to %s", c.Netmask)
 	}
 
 	errs = packer.MultiErrorAppend(errs, c.Comm.Prepare(&c.ctx)...)

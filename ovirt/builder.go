@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/packer/common"
+	"github.com/hashicorp/packer/helper/communicator"
 	"github.com/hashicorp/packer/helper/multistep"
 	"github.com/hashicorp/packer/packer"
 	ovirtsdk4 "github.com/ovirt/go-ovirt"
@@ -73,6 +74,12 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 			Debug: b.config.PackerDebug,
 			Comm:  &b.config.Comm,
 		},
+		&communicator.StepConnect{
+			Config:    &b.config.Comm,
+			Host:      commHost,
+			SSHConfig: b.config.Comm.SSHConfigFunc(),
+		},
+		&common.StepProvision{},
 		&stepShutdownInstance{},
 	}
 
