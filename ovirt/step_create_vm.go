@@ -216,7 +216,6 @@ func (s *stepCreateVM) Run(ctx context.Context, state multistep.StateBag) multis
 	return multistep.ActionContinue
 }
 
-// Cleanup any resources that may have been created during the Run phase.
 func (s *stepCreateVM) Cleanup(state multistep.StateBag) {
 	if _, ok := state.GetOk("vm_id"); !ok {
 		return
@@ -226,22 +225,9 @@ func (s *stepCreateVM) Cleanup(state multistep.StateBag) {
 	conn := state.Get("conn").(*ovirtsdk4.Connection)
 	vmID := state.Get("vm_id").(string)
 
-	ui.Say(fmt.Sprintf("Removing VM: %s", vmID))
-	_, err := conn.SystemService().
-		VmsService().
-		VmService(vmID).
-		Remove().
-		Send()
-	if err != nil {
-		ui.Error(fmt.Sprintf("Error removing VM, may still be around: %s", err))
-		return
-	}
+	ui.Say(fmt.Sprintf("Deleting VM: %s ...", vmID))
 
-	stateChange := StateChangeConf{
-		Pending:   []string{string(ovirtsdk4.VMSTATUS_UP), string(ovirtsdk4.VMSTATUS_DOWN)},
-		Target:    []string{string(ovirtsdk4.VMSTATUS_DOWN)},
-		Refresh:   VMStateRefreshFunc(conn, vmID),
-		StepState: state,
+	if _, err := conn.SystemService().VmsService().VmService(vmID).Remove().Send(); err != nil {
+		ui.Error(fmt.Sprintf("Error deleting VM '%s', may still be around: %s", vmID, err))
 	}
-	WaitForState(&stateChange)
 }
