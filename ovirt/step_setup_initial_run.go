@@ -41,6 +41,7 @@ func (s *stepSetupInitialRun) Run(ctx context.Context, state multistep.StateBag)
 	}
 	if c.IPAddress != "" {
 		ncBuilder := ovirtsdk4.NewNicConfigurationBuilder().
+			Name("eth0").
 			BootProtocol(ovirtsdk4.BootProtocol("static")).
 			OnBoot(true)
 		log.Printf("Set static IP address: %s/%s", c.IPAddress, c.Netmask)
