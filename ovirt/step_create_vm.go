@@ -12,27 +12,24 @@ import (
 	ovirtsdk4 "github.com/ovirt/go-ovirt"
 )
 
-// stepCreateInstance represents a Packer build step that creates ovirtsdk4 instances.
-type stepCreateInstance struct {
+// stepCreateVM represents a Packer build step that creates ovirtsdk4 instances.
+type stepCreateVM struct {
 	Debug bool
 	Ctx   interpolate.Context
 }
 
-// Run executes the Packer build step that creates a ovirtsdk4 instance.
-func (s *stepCreateInstance) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
+func (s *stepCreateVM) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
 	c := state.Get("config").(*Config)
 	ui := state.Get("ui").(packer.Ui)
 	conn := state.Get("conn").(*ovirtsdk4.Connection)
 
-	ui.Say("Creating virtual machine...")
+	ui.Say("Creating VM...")
 
-	clustersService := conn.SystemService().ClustersService()
-	log.Printf("Query oVirt clusters...")
-
-	// Use the "list" method of the "clusters" service to list all the clusters of the system
-	clustersResponse, err := clustersService.List().Send()
+	clustersResponse, err := conn.SystemService().ClustersService().List().Send()
 	if err != nil {
-		ui.Error(fmt.Sprintf("oVirt: Error getting cluster list\n%v", err))
+		err := fmt.Errorf("Error getting cluster list: %s", err)
+		state.Put("error", err)
+		ui.Error(err.Error())
 		return multistep.ActionHalt
 	}
 
@@ -220,7 +217,7 @@ func (s *stepCreateInstance) Run(ctx context.Context, state multistep.StateBag) 
 }
 
 // Cleanup any resources that may have been created during the Run phase.
-func (s *stepCreateInstance) Cleanup(state multistep.StateBag) {
+func (s *stepCreateVM) Cleanup(state multistep.StateBag) {
 	if _, ok := state.GetOk("vm_id"); !ok {
 		return
 	}

@@ -66,7 +66,7 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 			Comm:         &b.config.Comm,
 			DebugKeyPath: fmt.Sprintf("ovirt_%s.pem", b.config.PackerBuildName),
 		},
-		&stepCreateInstance{
+		&stepCreateVM{
 			Ctx:   b.config.ctx,
 			Debug: b.config.PackerDebug,
 		},
