@@ -80,7 +80,10 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 			SSHConfig: b.config.Comm.SSHConfigFunc(),
 		},
 		&common.StepProvision{},
-		&stepShutdownInstance{},
+		&common.StepCleanupTempKeys{
+			Comm: &b.config.Comm,
+		},
+		&stepStopVM{},
 	}
 
 	// To use `Must` methods, you should recover it if panics
