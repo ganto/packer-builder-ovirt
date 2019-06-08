@@ -84,6 +84,7 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 			Comm: &b.config.Comm,
 		},
 		&stepStopVM{},
+		&stepDetachDisk{},
 	}
 
 	// To use `Must` methods, you should recover it if panics

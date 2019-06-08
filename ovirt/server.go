@@ -52,6 +52,36 @@ func VMStateRefreshFunc(
 	}
 }
 
+// DiskAttachmentStateRefreshFunc returns a StateRefreshFunc that is used to
+// watch a oVirt disk attachment.
+func DiskAttachmentStateRefreshFunc(
+	conn *ovirtsdk4.Connection, vmID string, diskID string) StateRefreshFunc {
+	return func() (interface{}, string, error) {
+		resp, err := conn.SystemService().
+			VmsService().
+			VmService(vmID).
+			DiskAttachmentsService().
+			AttachmentService(diskID).
+			Get().
+			Send()
+		if err != nil {
+			if _, ok := err.(*ovirtsdk4.NotFoundError); ok {
+				// Sometimes oVirt has consistency issues and doesn't see
+				// newly created Disk instance. Return empty state.
+				return nil, "", nil
+			}
+			return nil, "", nil
+		}
+
+		attachmentState := "inactive"
+		if resp.MustAttachment().MustActive() {
+			attachmentState = "active"
+		}
+
+		return resp.MustAttachment(), attachmentState, nil
+	}
+}
+
 // WaitForState watches an object and waits for it to achieve a certain
 // state.
 func WaitForState(conf *StateChangeConf) (i interface{}, err error) {
