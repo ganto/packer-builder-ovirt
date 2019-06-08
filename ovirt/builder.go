@@ -84,6 +84,7 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 			Comm: &b.config.Comm,
 		},
 		&stepStopVM{},
+		&stepUpdateDisk{},
 		&stepDetachDisk{},
 	}
 
@@ -104,13 +105,13 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 	}
 
 	// If there are no images, then just return
-	if _, ok := state.GetOk("image"); !ok {
+	if _, ok := state.GetOk("disk_id"); !ok {
 		return nil, nil
 	}
 
 	// Build the artifact and return it
 	artifact := &Artifact{
-		templateID: 42,
+		diskId: state.Get("disk_id").(string),
 	}
 
 	return artifact, nil

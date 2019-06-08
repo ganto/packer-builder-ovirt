@@ -41,6 +41,9 @@ type Config struct {
 	TemplateName        string `mapstructure:"template_name"`
 	TemplateDescription string `mapstructure:"template_description"`
 
+	DiskName        string `mapstructure:"disk_name"`
+	DiskDescription string `mapstructure:"disk_description"`
+
 	ctx interpolate.Context
 }
 
@@ -85,6 +88,9 @@ func NewConfig(raws ...interface{}) (*Config, []string, error) {
 	if c.VMName == "" {
 		// Default to packer-[time-ordered-uuid]
 		c.VMName = fmt.Sprintf("packer-%s", uuid.TimeOrderedUUID())
+	}
+	if c.DiskName == "" {
+		c.DiskName = c.VMName
 	}
 	if c.Memory < 16 {
 		log.Printf("Memory %d is too small, using default: 512", c.Memory)

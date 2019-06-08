@@ -10,14 +10,15 @@ import (
 	ovirtsdk4 "github.com/ovirt/go-ovirt"
 )
 
-type stepDetachDisk struct{}
+type stepUpdateDisk struct{}
 
-func (s *stepDetachDisk) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
+func (s *stepUpdateDisk) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
+	config := state.Get("config").(*Config)
 	ui := state.Get("ui").(packer.Ui)
 	conn := state.Get("conn").(*ovirtsdk4.Connection)
 	vmID := state.Get("vm_id").(string)
 
-	ui.Say("Detaching disk from VM ...")
+	ui.Say("Updating disk properties ...")
 
 	resp, err := conn.SystemService().
 		VmsService().
@@ -50,7 +51,7 @@ func (s *stepDetachDisk) Run(ctx context.Context, state multistep.StateBag) mult
 		DiskAttachmentsService().
 		AttachmentService(diskID)
 
-	dasResp, err := diskAttachmentService.Get().Send()
+	_, err = diskAttachmentService.Get().Send()
 	if err != nil {
 		err = fmt.Errorf("Error getting disk attachment '%s': %s", diskID, err)
 		ui.Error(err.Error())
@@ -58,48 +59,41 @@ func (s *stepDetachDisk) Run(ctx context.Context, state multistep.StateBag) mult
 		return multistep.ActionHalt
 	}
 
-	if dasResp.MustAttachment().MustActive() {
-		ui.Message(fmt.Sprintf("Deactivating disk attachment: %s ...", diskID))
-		_, err := diskAttachmentService.Update().
-			DiskAttachment(
-				ovirtsdk4.NewDiskAttachmentBuilder().
-					Active(false).
-					MustBuild()).
-			Send()
-		if err != nil {
-			err = fmt.Errorf("Failed to deactivate disk attachment '%s': %s", diskID, err)
-			ui.Error(err.Error())
-			state.Put("error", err)
-			return multistep.ActionHalt
-		}
+	diskBuilder := ovirtsdk4.NewDiskBuilder().
+		Name(config.DiskName).
+		Description(config.DiskDescription)
+
+	log.Printf(fmt.Sprintf("Disk name: %s", config.DiskName))
+	log.Printf(fmt.Sprintf("Disk description: %s", config.DiskDescription))
+
+	_, err = diskAttachmentService.Update().DiskAttachment(
+		ovirtsdk4.NewDiskAttachmentBuilder().
+			Disk(diskBuilder.MustBuild()).
+			MustBuild()).
+		Send()
+	if err != nil {
+		err = fmt.Errorf("Failed to update disk properties: %s", err)
+		ui.Error(err.Error())
+		state.Put("error", err)
+		return multistep.ActionHalt
 	}
 
-	ui.Message(fmt.Sprintf("Waiting for disk attachment to become inactive ..."))
+	ui.Message(fmt.Sprintf("Waiting for disk '%s' reaching status OK...", diskID))
 	stateChange := StateChangeConf{
-		Pending:   []string{"active"},
-		Target:    []string{"inactive"},
-		Refresh:   DiskAttachmentStateRefreshFunc(conn, vmID, diskID),
+		Pending:   []string{string(ovirtsdk4.DISKSTATUS_LOCKED)},
+		Target:    []string{string(ovirtsdk4.DISKSTATUS_OK)},
+		Refresh:   DiskStateRefreshFunc(conn, diskID),
 		StepState: state,
 	}
 	_, err = WaitForState(&stateChange)
 	if err != nil {
 		err := fmt.Errorf("Failed waiting for disk attachment (%s) to become inactive: %s", diskID, err)
-		state.Put("error", err)
 		ui.Error(err.Error())
+		state.Put("error", err)
 		return multistep.ActionHalt
 	}
-
-	_, err = diskAttachmentService.Remove().Send()
-	if err != nil {
-		err := fmt.Errorf("Failed to detach disk (%s) from VM: %s", diskID, err)
-		state.Put("error", err)
-		ui.Error(err.Error())
-		return multistep.ActionHalt
-	}
-
-	state.Put("disk_id", diskID)
 
 	return multistep.ActionContinue
 }
 
-func (s *stepDetachDisk) Cleanup(state multistep.StateBag) {}
+func (s *stepUpdateDisk) Cleanup(state multistep.StateBag) {}
