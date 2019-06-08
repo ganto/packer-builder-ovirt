@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/url"
-	"os"
 
 	"github.com/hashicorp/packer/common"
 	"github.com/hashicorp/packer/common/uuid"
@@ -17,13 +15,10 @@ import (
 
 type Config struct {
 	common.PackerConfig `mapstructure:",squash"`
-	Comm                communicator.Config `mapstructure:",squash"`
 
-	OvirtURLRaw        string `mapstructure:"ovirt_url"`
-	OvirtURL           *url.URL
-	SkipCertValidation bool   `mapstructure:"insecure_skip_tls_verify"`
-	Username           string `mapstructure:"username"`
-	Password           string `mapstructure:"password"`
+	AccessConfig `mapstructure:",squash"`
+
+	Comm communicator.Config `mapstructure:",squash"`
 
 	Cluster       string `mapstructure:"cluster"`
 	StorageDomain string `mapstructure:"storage_domain"`
@@ -73,18 +68,11 @@ func NewConfig(raws ...interface{}) (*Config, []string, error) {
 		return nil, nil, err
 	}
 
+	// Accumulate any errors
 	var errs *packer.MultiError
+	errs = packer.MultiErrorAppend(errs, c.AccessConfig.Prepare(&c.ctx)...)
 
 	// Defaults
-	if c.OvirtURLRaw == "" {
-		c.OvirtURLRaw = os.Getenv("OVIRT_URL")
-	}
-	if c.Username == "" {
-		c.Username = os.Getenv("OVIRT_USERNAME")
-	}
-	if c.Password == "" {
-		c.Password = os.Getenv("OVIRT_PASSWORD")
-	}
 	if c.Cluster == "" {
 		c.Cluster = "Default"
 	}
@@ -142,18 +130,6 @@ func NewConfig(raws ...interface{}) (*Config, []string, error) {
 	errs = packer.MultiErrorAppend(errs, c.Comm.Prepare(&c.ctx)...)
 
 	// Required configurations that will display errors if not set
-	if c.Username == "" {
-		errs = packer.MultiErrorAppend(errs, errors.New("username must be specified"))
-	}
-	if c.Password == "" {
-		errs = packer.MultiErrorAppend(errs, errors.New("password must be specified"))
-	}
-	if c.OvirtURLRaw == "" {
-		errs = packer.MultiErrorAppend(errs, errors.New("ovirt_url must be specified"))
-	}
-	if c.OvirtURL, err = url.Parse(c.OvirtURLRaw); err != nil {
-		errs = packer.MultiErrorAppend(errs, errors.New(fmt.Sprintf("Could not parse ovirt_url: %s", err)))
-	}
 	if c.SourceTemplate == "" {
 		errs = packer.MultiErrorAppend(errs, errors.New(fmt.Sprintf("source_template must be specified")))
 	}
