@@ -1,0 +1,17 @@
+{
+  "builders": [
+    {
+      "type": "ovirt",
+      "ovirt_url": "https://ovirt.example.com/ovirt-engine/api",
+      "username": "admin@internal",
+      "password": "password",
+      "ssh_username": "centos",
+      "source_template": "CentOS_7_v1805_Cloud",
+      "address": "192.168.0.10",
+      "netmask": "255.255.255.0",
+      "gateway": "192.168.0.1",
+      "disk_name": "CentOS_7_Packer",
+      "disk_description": "CentOS 7 disk provisioned from template by packer"
+    }
+  ]
+}
