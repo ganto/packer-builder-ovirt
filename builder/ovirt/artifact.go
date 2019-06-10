@@ -31,7 +31,7 @@ func (a *Artifact) State(name string) interface{} {
 }
 
 func (a *Artifact) Destroy() error {
-	log.Printf("Destroying disk: %d", a.diskId)
+	log.Printf("Destroying disk: %s", a.diskId)
 	//TODO
 	return nil
 }
