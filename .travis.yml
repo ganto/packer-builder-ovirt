@@ -1,9 +1,10 @@
-env:
-  - USER=travis GO111MODULE=off
+dist: xenial
 sudo: false
 language: go
 go:
   - 1.12.x
+env:
+  - USER=travis GO111MODULE=off
 script:
   - make fmt-check
   - make bin
