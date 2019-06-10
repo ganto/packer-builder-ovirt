@@ -6,5 +6,5 @@ go:
   - 1.12.x
 script:
   - make fmt-check
+  - make bin
   - make test
-  - travis_wait make bin
