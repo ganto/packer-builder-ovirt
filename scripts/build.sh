@@ -7,9 +7,6 @@
 ALL_XC_ARCH="386 amd64 arm arm64 ppc64le mips mips64 mipsle mipsle64"
 ALL_XC_OS="linux darwin windows freebsd openbsd solaris"
 
-# Exit immediately if a command fails
-set -e
-
 # Validates that a necessary tool is on the PATH
 function validateToolPresence
 {
