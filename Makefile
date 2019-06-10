@@ -5,6 +5,7 @@ VET?=$(shell go list ./...)
 
 install-build-deps: ## Install dependencies for bin build
 	@go get github.com/mitchellh/gox
+	@go get ./...
 
 bin: install-build-deps ## Build debug/test build
 	@GO111MODULE=off sh -c "$(CURDIR)/scripts/build.sh"
