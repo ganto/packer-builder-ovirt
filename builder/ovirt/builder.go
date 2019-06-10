@@ -91,7 +91,7 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 	// To use `Must` methods, you should recover it if panics
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Errorf("oVirt: Panics occurs, try the non-Must methods to find the reason")
+			fmt.Printf("oVirt: Panics occurs, try the non-Must methods to find the reason (%s)", err)
 		}
 	}()
 
