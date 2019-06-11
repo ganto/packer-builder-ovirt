@@ -60,33 +60,39 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 	state.Put("ui", ui)
 
 	// Build the steps
-	steps := []multistep.Step{
-		&stepKeyPair{
-			Debug:        b.config.PackerDebug,
-			Comm:         &b.config.Comm,
-			DebugKeyPath: fmt.Sprintf("ovirt_%s.pem", b.config.PackerBuildName),
-		},
-		&stepCreateVM{
+	steps := []multistep.Step{}
+	steps = append(steps, &stepKeyPair{
+		Debug:        b.config.PackerDebug,
+		Comm:         &b.config.Comm,
+		DebugKeyPath: fmt.Sprintf("ovirt_%s.pem", b.config.PackerBuildName),
+	},
+	)
+	if b.config.SourceType == "template" {
+		steps = append(steps, &stepCreateVMFromTemplate{
 			Ctx:   b.config.ctx,
 			Debug: b.config.PackerDebug,
 		},
-		&stepSetupInitialRun{
-			Debug: b.config.PackerDebug,
-			Comm:  &b.config.Comm,
-		},
-		&communicator.StepConnect{
-			Config:    &b.config.Comm,
-			Host:      commHost,
-			SSHConfig: b.config.Comm.SSHConfigFunc(),
-		},
-		&common.StepProvision{},
-		&common.StepCleanupTempKeys{
-			Comm: &b.config.Comm,
-		},
-		&stepStopVM{},
-		&stepUpdateDisk{},
-		&stepDetachDisk{},
+		)
 	}
+	steps = append(steps, &stepSetupInitialRun{
+		Debug: b.config.PackerDebug,
+		Comm:  &b.config.Comm,
+	},
+	)
+	steps = append(steps, &communicator.StepConnect{
+		Config:    &b.config.Comm,
+		Host:      commHost,
+		SSHConfig: b.config.Comm.SSHConfigFunc(),
+	},
+	)
+	steps = append(steps, &common.StepProvision{})
+	steps = append(steps, &common.StepCleanupTempKeys{
+		Comm: &b.config.Comm,
+	},
+	)
+	steps = append(steps, &stepStopVM{})
+	steps = append(steps, &stepUpdateDisk{})
+	steps = append(steps, &stepDetachDisk{})
 
 	// To use `Must` methods, you should recover it if panics
 	defer func() {
