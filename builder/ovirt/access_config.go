@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/packer/template/interpolate"
 )
 
+// AccessConfig contains the oVirt API access and authentication configuration
 type AccessConfig struct {
 	OvirtURLRaw        string `mapstructure:"ovirt_url"`
 	OvirtURL           *url.URL
@@ -17,6 +18,7 @@ type AccessConfig struct {
 	Password           string `mapstructure:"password"`
 }
 
+// Prepare performs basic validation on the AccessConfig
 func (c *AccessConfig) Prepare(ctx *interpolate.Context) []error {
 	var errs []error
 
@@ -43,7 +45,7 @@ func (c *AccessConfig) Prepare(ctx *interpolate.Context) []error {
 
 	var err error
 	if c.OvirtURL, err = url.Parse(c.OvirtURLRaw); err != nil {
-		errs = append(errs, errors.New(fmt.Sprintf("Could not parse ovirt_url: %s", err)))
+		errs = append(errs, fmt.Errorf("Could not parse ovirt_url: %s", err))
 	}
 
 	if len(errs) > 0 {
