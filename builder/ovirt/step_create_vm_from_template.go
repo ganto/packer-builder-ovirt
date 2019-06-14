@@ -124,7 +124,11 @@ func (s *stepCreateVMFromTemplate) Run(ctx context.Context, state multistep.Stat
 		Vm(vm).
 		Send()
 	if err != nil {
-		err := fmt.Errorf("Error creating virtual machine: %s", err)
+		if _, ok := err.(*ovirtsdk4.NotFoundError); ok {
+			err = fmt.Errorf("Could not find virtual machine template '%s'", templateID)
+		} else {
+			err = fmt.Errorf("Error creating virtual machine: %s", err)
+		}
 		state.Put("error", err)
 		ui.Error(err.Error())
 		return multistep.ActionHalt
