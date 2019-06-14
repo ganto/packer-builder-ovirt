@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/packer/template/interpolate"
 )
 
+// SourceConfig contains the various source properties for an oVirt image
 type SourceConfig struct {
 	Cluster string `mapstructure:"cluster"`
 
@@ -20,6 +21,7 @@ type SourceConfig struct {
 	SourceTemplateID      string `mapstructure:"source_template_id"`
 }
 
+// Prepare performs basic validation on the SourceConfig
 func (c *SourceConfig) Prepare(ctx *interpolate.Context) []error {
 	var errs []error
 	// Supported source types must be added in alphabetical order
