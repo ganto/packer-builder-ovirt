@@ -4,7 +4,7 @@ language: go
 go:
   - 1.12.x
 env:
-  - USER=travis GO111MODULE=off
+  - USER=travis GO111MODULE=off PACKER_DEV=1
 script:
   - make fmt-check
   - make bin
