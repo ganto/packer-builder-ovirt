@@ -117,7 +117,7 @@ func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (pack
 
 	// Build the artifact and return it
 	artifact := &Artifact{
-		diskId: state.Get("disk_id").(string),
+		diskID: state.Get("disk_id").(string),
 	}
 
 	return artifact, nil
