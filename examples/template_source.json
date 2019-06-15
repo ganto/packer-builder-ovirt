@@ -6,7 +6,7 @@
       "username": "admin@internal",
       "password": "password",
       "ssh_username": "centos",
-      "source_template": "CentOS_7_v1805_Cloud",
+      "source_template_name": "CentOS_7_v1805_Cloud",
       "address": "192.168.0.10",
       "netmask": "255.255.255.0",
       "gateway": "192.168.0.1",
