@@ -13,9 +13,10 @@ import (
 	ovirtsdk4 "github.com/ovirt/go-ovirt"
 )
 
-// The unique id for the builder
-const BuilderId = "ganto.ovirt"
+// BuilderID defines the unique id for the builder.
+const BuilderID = "ganto.ovirt"
 
+// Builder is a builder implementation that creates oVirt custom images.
 type Builder struct {
 	config Config
 	runner multistep.Runner
@@ -23,6 +24,7 @@ type Builder struct {
 
 var pluginVersion = "0.0.1"
 
+// Prepare processes the build configuration parameters.
 func (b *Builder) Prepare(raws ...interface{}) ([]string, error) {
 	c, warnings, errs := NewConfig(raws...)
 	if errs != nil {
@@ -33,6 +35,7 @@ func (b *Builder) Prepare(raws ...interface{}) ([]string, error) {
 	return nil, nil
 }
 
+// Run is the main function executing the image build.
 func (b *Builder) Run(ctx context.Context, ui packer.Ui, hook packer.Hook) (packer.Artifact, error) {
 	var err error
 

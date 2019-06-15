@@ -12,7 +12,7 @@ type Artifact struct {
 
 // BuilderId uniquely identifies the builder.
 func (*Artifact) BuilderId() string {
-	return BuilderId
+	return BuilderID
 }
 
 // Files returns the files represented by the artifact. Not used for oVirt.
