@@ -8,7 +8,7 @@ install-build-deps: ## Install dependencies for bin build
 	@go get ./...
 
 bin: install-build-deps ## Build debug/test build
-	@GO111MODULE=off sh -c "$(CURDIR)/scripts/build.sh"
+	@GO111MODULE=on sh -c "$(CURDIR)/scripts/build.sh"
 
 fmt: ## Format Go code
 	@go fmt ./...

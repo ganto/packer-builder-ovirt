@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ganto/packer-builder-ovirt/builder/ovirt"
+	"github.com/cwilloughby-bw/packer-builder-ovirt/builder/ovirt"
 	"github.com/hashicorp/packer/packer/plugin"
 )
 
