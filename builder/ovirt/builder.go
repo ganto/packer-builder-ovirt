@@ -24,6 +24,8 @@ type Builder struct {
 
 var pluginVersion = "0.0.1"
 
+func (b *Builder) ConfigSpec() hcldec.ObjectSpec { return b.config.FlatMapstructure().HCL2Spec() }
+
 // Prepare processes the build configuration parameters.
 func (b *Builder) Prepare(raws ...interface{}) ([]string, error) {
 	c, warnings, errs := NewConfig(raws...)
